@@ -1,2 +1,7 @@
-imageio-ffmpeg==0.6.0
-numpy==2.3.2
+imageio-ffmpeg>=0.6.0
+mutagen>=1.48.1
+numpy>=2.0.0
+pedalboard>=0.9.24
+pyloudnorm>=0.2.0
+scipy>=1.15.0
+soundfile>=0.14.0
