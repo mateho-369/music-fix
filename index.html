@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playmaker — Audition Player</title>
+<style>
+  :root {
+    --bg: #070b14;
+    --panel: #0d1424;
+    --panel2: #111a2e;
+    --line: #1d2942;
+    --txt: #e8eefc;
+    --dim: #8b98b8;
+    --cyan: #33e0ff;
+    --mag: #ff3fd8;
+    --ok: #3dffb0;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background:
+      radial-gradient(1200px 500px at 70% -10%, #14224a55, transparent),
+      radial-gradient(900px 400px at 10% 110%, #2a0f3a55, transparent),
+      var(--bg);
+    color: var(--txt);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px 14px;
+  }
+  .app {
+    width: min(880px, 100%);
+    background: linear-gradient(180deg, var(--panel), var(--panel2));
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: 0 30px 80px #000a, inset 0 1px 0 #ffffff12;
+    overflow: hidden;
+  }
+  header {
+    display: flex; gap: 16px; align-items: center;
+    padding: 20px 22px 14px;
+  }
+  header img {
+    width: 84px; height: 84px; border-radius: 12px;
+    border: 1px solid var(--line); box-shadow: 0 8px 24px #0009;
+  }
+  .titles h1 { margin: 0; font-size: 24px; letter-spacing: .12em; }
+  .titles .sub { color: var(--dim); margin-top: 2px; }
+  .titles .sub b { color: var(--cyan); font-weight: 600; }
+  .facts {
+    display: flex; flex-wrap: wrap; gap: 8px; padding: 0 22px 14px;
+  }
+  .chip {
+    font-size: 12px; color: var(--dim);
+    border: 1px solid var(--line); background: #0b1220;
+    padding: 4px 10px; border-radius: 999px; letter-spacing: .04em;
+  }
+  .chip b { color: var(--txt); font-weight: 600; }
+  /* decks */
+  .decks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 22px; }
+  .deck {
+    border: 1px solid var(--line); border-radius: 14px;
+    padding: 12px 14px; cursor: pointer; background: #0b1220;
+    transition: border-color .15s, background .15s;
+    user-select: none;
+  }
+  .deck:hover { border-color: #2a3a5e; }
+  .deck.active {
+    border-color: var(--cyan);
+    background: linear-gradient(180deg, #0e1c31, #0b1220);
+    box-shadow: 0 0 0 1px #33e0ff33, 0 6px 24px #33e0ff14;
+  }
+  .deck .name { font-weight: 700; letter-spacing: .06em; }
+  .deck .role { color: var(--dim); font-size: 13px; margin-top: 2px; }
+  .deck .badge {
+    float: right; font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--dim);
+  }
+  .deck.active .badge { color: var(--cyan); border-color: #33e0ff55; }
+  /* transport */
+  .viz-wrap { padding: 14px 22px 0; }
+  canvas#viz {
+    width: 100%; height: 110px; display: block;
+    background: #080d18; border: 1px solid var(--line); border-radius: 12px;
+  }
+  .transport { padding: 14px 22px 4px; display: flex; align-items: center; gap: 14px; }
+  button.play {
+    width: 58px; height: 58px; border-radius: 50%; border: 0; cursor: pointer;
+    background: linear-gradient(135deg, var(--cyan), var(--mag));
+    display: grid; place-items: center; flex: 0 0 auto;
+    box-shadow: 0 10px 30px #33e0ff2e, 0 2px 8px #0008;
+    transition: transform .1s;
+  }
+  button.play:active { transform: scale(.96); }
+  button.play svg { width: 26px; height: 26px; fill: #04101c; }
+  .seekwrap { flex: 1; }
+  input[type=range].seek {
+    width: 100%; appearance: none; height: 6px; border-radius: 3px;
+    background: linear-gradient(90deg, var(--cyan) var(--p, 0%), #22304e var(--p, 0%));
+    outline: none; cursor: pointer;
+  }
+  input[type=range].seek::-webkit-slider-thumb {
+    appearance: none; width: 15px; height: 15px; border-radius: 50%;
+    background: #fff; border: 2px solid var(--cyan); box-shadow: 0 2px 8px #000a;
+  }
+  input[type=range].seek::-moz-range-thumb {
+    width: 15px; height: 15px; border-radius: 50%;
+    background: #fff; border: 2px solid var(--cyan);
+  }
+  .times { font-variant-numeric: tabular-nums; color: var(--dim); font-size: 13px; min-width: 96px; text-align: right; }
+  .times b { color: var(--txt); }
+  /* sections */
+  .sections { padding: 10px 22px 4px; }
+  .sections .label { color: var(--dim); font-size: 12px; letter-spacing: .1em; margin: 6px 0 8px; }
+  .secrow { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sec {
+    border: 1px solid var(--line); background: #0b1220; color: var(--txt);
+    padding: 7px 12px; border-radius: 10px; cursor: pointer; font-size: 13px;
+    transition: border-color .15s, background .15s;
+  }
+  .sec:hover { border-color: var(--mag); background: #160f24; }
+  .sec span { color: var(--dim); font-size: 11px; margin-left: 6px; }
+  .options { display: flex; align-items: center; gap: 18px; padding: 10px 22px 18px; color: var(--dim); font-size: 13px; flex-wrap: wrap; }
+  .options label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+  .options input[type=checkbox] { accent-color: var(--cyan); width: 15px; height: 15px; }
+  input[type=range].vol { width: 130px; accent-color: var(--cyan); cursor: pointer; }
+  .keys { margin-left: auto; }
+  kbd {
+    background: #0b1220; border: 1px solid var(--line); border-bottom-width: 2px;
+    border-radius: 6px; padding: 1px 6px; font-size: 11px; color: var(--txt);
+  }
+  /* downloads */
+  .downloads { padding: 6px 22px 4px; }
+  .downloads .label { color: var(--dim); font-size: 12px; letter-spacing: .1em; margin: 8px 0 10px; }
+  .dlgrid { display: flex; flex-wrap: wrap; gap: 10px; }
+  a.dlbtn {
+    display: inline-flex; align-items: center; gap: 9px;
+    border: 1px solid var(--line); background: #0b1220; color: var(--txt);
+    padding: 11px 16px; border-radius: 12px; cursor: pointer; font-size: 14px;
+    text-decoration: none; transition: border-color .15s, background .15s, transform .1s;
+  }
+  a.dlbtn:hover { border-color: var(--ok); background: #0c1a16; transform: translateY(-1px); }
+  a.dlbtn svg { width: 17px; height: 17px; fill: var(--ok); flex: 0 0 auto; }
+  a.dlbtn small { color: var(--dim); font-size: 11.5px; display: block; margin-top: 1px; }
+  a.dlbtn .txt b { font-weight: 700; }
+  a.dlbtn.main {
+    background: linear-gradient(135deg, #0e3d33, #0b1220);
+    border-color: #3dffb055; box-shadow: 0 6px 22px #3dffb01c;
+  }
+  footer {
+    padding: 12px 22px 18px; color: #6b7691; font-size: 12px; border-top: 1px solid var(--line);
+  }
+  footer b { color: var(--dim); }
+  .nowplaying { color: var(--ok); font-size: 13px; min-height: 20px; padding: 0 22px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <img src="cover_playmaker.png" alt="cover">
+    <div class="titles">
+      <h1>PLAYMAKER</h1>
+      <div class="sub">ma teho — re-produced edition · audition player · <b>A/B against your reference</b></div>
+    </div>
+  </header>
+
+  <div class="facts">
+    <span class="chip">BPM <b>143.55</b></span>
+    <span class="chip">key <b>G# minor</b></span>
+    <span class="chip">length <b>3:07.39</b></span>
+    <span class="chip">loudness <b>−13.7 LUFS</b></span>
+    <span class="chip">format <b>320 kbps CBR · 48 kHz · stereo</b></span>
+    <span class="chip">bars <b>112</b></span>
+  </div>
+
+  <div class="decks">
+    <div class="deck active" id="deckNew">
+      <span class="badge">NEW MASTER</span>
+      <div class="name">Ma Teho — Playmaker</div>
+      <div class="role">Re-production · new instrumentation · −13.7 LUFS · TP −4.4 dB</div>
+    </div>
+    <div class="deck" id="deckRef">
+      <span class="badge">REFERENCE</span>
+      <div class="name">wanna play ? (Remix)</div>
+      <div class="role">Your original file · for A/B comparison only</div>
+    </div>
+  </div>
+
+  <div class="viz-wrap"><canvas id="viz"></canvas></div>
+
+  <div class="transport">
+    <button class="play" id="btnPlay" aria-label="play/pause">
+      <svg id="icoPlay" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      <svg id="icoPause" viewBox="0 0 24 24" style="display:none"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+    </button>
+    <div class="seekwrap">
+      <input type="range" class="seek" id="seek" min="0" max="1000" value="0" step="1">
+    </div>
+    <div class="times"><b id="tCur">0:00</b> / <span id="tDur">3:07</span></div>
+  </div>
+
+  <div class="sections">
+    <div class="label">JUMP TO SECTION — SAME TIMELINE ON BOTH DECKS</div>
+    <div class="secrow" id="secrow"></div>
+  </div>
+
+  <div class="nowplaying" id="nowplaying"></div>
+
+  <div class="options">
+    <label><input type="checkbox" id="linked" checked> link A/B position (seamless compare)</label>
+    <label>volume <input type="range" class="vol" id="vol" min="0" max="100" value="85"></label>
+    <span class="keys"><kbd>space</kbd> play · <kbd>←</kbd><kbd>→</kbd> ±5 s · <kbd>N</kbd>/<kbd>R</kbd> switch deck</span>
+  </div>
+
+  <div class="downloads">
+    <div class="label">DOWNLOAD</div>
+    <div class="dlgrid">
+      <a class="dlbtn main" href="Ma%20Teho%20-%20Playmaker.mp3" download="Ma Teho - Playmaker.mp3">
+        <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg>
+        <span class="txt"><b>Master MP3 — “Ma Teho - Playmaker”</b><small>320 kbps CBR · 48 kHz stereo · 3:07 · 9.7 MB</small></span>
+      </a>
+      <a class="dlbtn" href="Playmaker_project.zip" download="Playmaker_project.zip">
+        <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg>
+        <span class="txt"><b>Full project (ZIP)</b><small>master + cover + generator script + analysis + tools · 11.9 MB</small></span>
+      </a>
+      <a class="dlbtn" href="cover_playmaker.png" download="cover_playmaker.png">
+        <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg>
+        <span class="txt"><b>Cover art</b><small>PNG · 1024×1024 · 2.2 MB</small></span>
+      </a>
+      <a class="dlbtn" href="wanna%20play%20_%20(Remix)%20(Cover)%20(Cover)%20(Cover).mp3" download="wanna play (reference).mp3">
+        <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg>
+        <span class="txt"><b>Reference MP3</b><small>your original file · 4.6 MB</small></span>
+      </a>
+    </div>
+  </div>
+
+  <footer>
+    <b>Private audition page.</b> Audio is streamed from this workspace only — nothing is uploaded.
+    Switch decks at any point: with “link A/B position” on, the other version continues from the exact same
+    timestamp so you can hear the instrumentation swap mid-phrase. Section grid: 112 bars @ 143.55 BPM, first downbeat 0.070 s.
+  </footer>
+</div>
+
+<audio id="audNew" preload="metadata"></audio>
+<audio id="audRef" preload="metadata"></audio>
+
+<script>
+(() => {
+  const SRC = {
+    new: encodeURI("Ma Teho - Playmaker.mp3"),
+    ref: encodeURI("wanna play _ (Remix) (Cover) (Cover) (Cover).mp3"),
+  };
+  const SECTIONS = [
+    ["Intro",        0.00],
+    ["Hook A1",     13.45],
+    ["Riff A2",     40.19],
+    ["Breakdown",   66.95],
+    ["Main B",      78.64],
+    ["Breakdown 2",132.15],
+    ["Final Drop", 145.53],
+    ["Outro",      170.60],
+  ];
+
+  const $ = id => document.getElementById(id);
+  const decks = {
+    new: { el: $("audNew"), card: $("deckNew"), label: "Playmaker (new master)" },
+    ref: { el: $("audRef"), card: $("deckRef"), label: "Reference (your original)" },
+  };
+  decks.new.el.src = SRC.new;
+  decks.ref.el.src = SRC.ref;
+
+  let current = "new";
+  let ctx = null, analysers = {}, sources = {};
+
+  function ensureGraph() {
+    if (!ctx) {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      for (const k of ["new", "ref"]) {
+        sources[k] = ctx.createMediaElementSource(decks[k].el);
+        analysers[k] = ctx.createAnalyser();
+        analysers[k].fftSize = 1024;
+        sources[k].connect(analysers[k]);
+        analysers[k].connect(ctx.destination);
+      }
+    }
+    if (ctx.state === "suspended") ctx.resume();
+  }
+
+  const fmt = t => {
+    if (!isFinite(t)) return "0:00";
+    t = Math.max(0, t);
+    const m = Math.floor(t / 60), s = Math.floor(t % 60);
+    return m + ":" + String(s).padStart(2, "0");
+  };
+
+  function setDeck(k, syncPos) {
+    if (k === current) return;
+    const from = decks[current], to = decks[k];
+    const wasPlaying = !from.el.paused;
+    if (syncPos && $("linked").checked) {
+      to.el.currentTime = Math.min(from.el.currentTime, (to.el.duration || 1e9));
+    }
+    from.el.pause();
+    current = k;
+    for (const [key, d] of Object.entries(decks)) d.card.classList.toggle("active", key === current);
+    if (wasPlaying) to.el.play();
+    $("nowplaying").textContent = "▸ now auditioning: " + to.label;
+  }
+
+  decks.new.card.addEventListener("click", () => setDeck("new", true));
+  decks.ref.card.addEventListener("click", () => setDeck("ref", true));
+
+  const btn = $("btnPlay"), icoPlay = $("icoPlay"), icoPause = $("icoPause");
+  function togglePlay() {
+    ensureGraph();
+    const el = decks[current].el;
+    if (el.paused) el.play(); else el.pause();
+  }
+  btn.addEventListener("click", togglePlay);
+
+  for (const k of ["new", "ref"]) {
+    const el = decks[k].el;
+    el.addEventListener("play", () => {
+      ensureGraph();
+      if (k === current) { icoPlay.style.display = "none"; icoPause.style.display = "block"; }
+    });
+    el.addEventListener("pause", () => {
+      if (k === current) { icoPlay.style.display = "block"; icoPause.style.display = "none"; }
+    });
+  }
+
+  const seek = $("seek"), tCur = $("tCur"), tDur = $("tDur");
+  function cur() { return decks[current].el; }
+  seek.addEventListener("input", () => {
+    const el = cur();
+    if (el.duration) el.currentTime = (seek.value / 1000) * el.duration;
+  });
+  setInterval(() => {
+    const el = cur();
+    if (el.duration) {
+      seek.value = String(Math.round(1000 * el.currentTime / el.duration));
+      seek.style.setProperty("--p", (100 * el.currentTime / el.duration) + "%");
+      tCur.textContent = fmt(el.currentTime);
+      tDur.textContent = fmt(el.duration);
+    }
+  }, 120);
+
+  // volume: applies to both decks
+  $("vol").addEventListener("input", e => {
+    const v = e.target.value / 100;
+    decks.new.el.volume = v; decks.ref.el.volume = v;
+  });
+  decks.new.el.volume = decks.ref.el.volume = 0.85;
+
+  // sections
+  const row = $("secrow");
+  for (const [name, t] of SECTIONS) {
+    const b = document.createElement("button");
+    b.className = "sec";
+    b.innerHTML = name + "<span>" + fmt(t) + "</span>";
+    b.addEventListener("click", () => {
+      decks[current].el.currentTime = t;
+      $("nowplaying").textContent = "▸ jumped to " + name + " (" + decks[current].label + ")";
+    });
+    row.appendChild(b);
+  }
+
+  // keyboard
+  document.addEventListener("keydown", e => {
+    if (e.target.tagName === "INPUT" && e.target.type !== "range") return;
+    if (e.code === "Space") { e.preventDefault(); togglePlay(); }
+    else if (e.code === "ArrowRight") { cur().currentTime = Math.min((cur().duration || 1e9), cur().currentTime + 5); }
+    else if (e.code === "ArrowLeft")  { cur().currentTime = Math.max(0, cur().currentTime - 5); }
+    else if (e.key === "n" || e.key === "N") setDeck("new", true);
+    else if (e.key === "r" || e.key === "R") setDeck("ref", true);
+  });
+
+  // visualizer
+  const cv = $("viz"), g2 = cv.getContext("2d");
+  function draw() {
+    requestAnimationFrame(draw);
+    const w = cv.width = cv.clientWidth * (window.devicePixelRatio || 1);
+    const h = cv.height = cv.clientHeight * (window.devicePixelRatio || 1);
+    g2.clearRect(0, 0, w, h);
+    let data = null;
+    if (ctx && analysers[current]) {
+      data = new Uint8Array(analysers[current].frequencyBinCount);
+      analysers[current].getByteFrequencyData(data);
+    }
+    const N = 64;
+    for (let i = 0; i < N; i++) {
+      const v = data ? data[Math.floor(i * data.length / N / 2)] / 255 : 0;
+      const bh = Math.max(2, v * h * 0.92);
+      const x = (i + 0.5) * (w / N);
+      const grd = g2.createLinearGradient(0, h, 0, h - bh);
+      grd.addColorStop(0, "#33e0ff");
+      grd.addColorStop(1, "#ff3fd8");
+      g2.fillStyle = grd;
+      g2.globalAlpha = 0.35 + 0.65 * v;
+      const bw = (w / N) * 0.55;
+      g2.beginPath();
+      g2.roundRect(x - bw / 2, h - bh, bw, bh, bw / 2);
+      g2.fill();
+    }
+    g2.globalAlpha = 1;
+  }
+  if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function (x, y, w2, h2, r) {
+      this.moveTo(x + r, y);
+      this.arcTo(x + w2, y, x + w2, y + h2, r);
+      this.arcTo(x + w2, y + h2, x, y + h2, r);
+      this.arcTo(x, y + h2, x, y, r);
+      this.arcTo(x, y, x + w2, y, r);
+      this.closePath();
+    };
+  }
+  draw();
+})();
+</script>
+</body>
+</html>
